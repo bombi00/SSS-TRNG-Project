@@ -32,7 +32,8 @@ class TRNG:
             self.pool = EntropyPool() 
             
             print(f"Progress: {len(final_sequence)}/{length_bits} bits")
-
+            
+        print(f"Collected :{length_bits} bits")
         return final_sequence[:length_bits]
 
     def save_to_file(self, sequence, filename="random_sequence.txt"):

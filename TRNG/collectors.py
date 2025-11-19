@@ -28,8 +28,7 @@ def collectMouseEntropy(plot_mouse=True, plot_bit=True, seconds=15):
     x_coo = []
     y_coo = []
     controller = mouse.Controller()
-    print("Move the mouse...\n")
-    time.sleep(2)
+    #print("Move the mouse...\n")
     t_end = time.time() + seconds
     while time.time() < t_end:
         x, y = controller.position
@@ -50,14 +49,13 @@ def collectMouseEntropy(plot_mouse=True, plot_bit=True, seconds=15):
     return bit_m
 
 
-def collectKeyboardEntropy(plot_bit=True, seconds=20):
+def collectKeyboardEntropy(plot_bit=True, seconds=15):
     key_times = []
     
     def on_press(key):
         key_times.append(time.time())
 
-    print("Type randomly on the keyboard...\n")
-    time.sleep(2)
+    #print("Type randomly on the keyboard...\n")
     listener = keyboard.Listener(on_press=on_press)
     listener.start()
     
@@ -77,7 +75,6 @@ def collectKeyboardEntropy(plot_bit=True, seconds=20):
 
 def collectSystemEntropy(plot_bit=True, seconds=15):
     sys_bits = []
-    print("Collecting entropy from the system noise...\n")
     t_end = time.time() + seconds
     
     while time.time() < t_end:
