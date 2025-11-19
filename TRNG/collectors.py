@@ -1,99 +1,104 @@
 import time
 import hashlib
-from pynput import mouse, keyboard
 import psutil
-import matplotlib.pyplot as plt
 import numpy as np
+from pynput import mouse, keyboard
+from collections import deque
+import threading
 
-def showMousePositions(x, y):
-    plt.figure(figsize=(16, 9))
-    plt.scatter(x, y, s=1)
-    plt.xlabel("X")
-    plt.ylabel("Y")
-    plt.title("Mouse positions")
-    plt.show()
+class BaseCollector:
+    def start(self):
+        pass
+    def stop(self):
+        pass
+    def collect(self, duration):
+        return np.array([])
 
-def showBitSeq(seq, title="Bit sequence"):
-    plt.figure(figsize=(20, 4))
-    plt.plot(range(len(seq)), seq)
-    plt.ylim(-0.2, 1.2)
-    plt.xlabel("Index")
-    plt.ylabel("Value")
-    plt.title(title)
-    plt.grid(True)
-    plt.show()
-
-
-def collectMouseEntropy(plot_mouse=True, plot_bit=True, seconds=15):
-    x_coo = []
-    y_coo = []
-    controller = mouse.Controller()
-    #print("Move the mouse...\n")
-    t_end = time.time() + seconds
-    while time.time() < t_end:
-        x, y = controller.position
-        x_coo.append(x)
-        y_coo.append(y)
-
-    if plot_mouse:
-        showMousePositions(x_coo, y_coo)
-    
-    bit_m = np.zeros(shape=(len(x_coo)))
-    for i in range(len(x_coo)):
-        temp = int(x_coo[i] + y_coo[i])
-        bit_m[i] = 0 if temp % 2 == 0 else 1
-    
-    if plot_bit:
-        showBitSeq(bit_m, "Mouse Bit Sequence")
-    
-    return bit_m
-
-
-def collectKeyboardEntropy(plot_bit=True, seconds=15):
-    key_times = []
-    
-    def on_press(key):
-        key_times.append(time.time())
-
-    #print("Type randomly on the keyboard...\n")
-    listener = keyboard.Listener(on_press=on_press)
-    listener.start()
-    
-    time.sleep(seconds)
-    listener.stop()
-    
-    bit_k = np.zeros(shape=(len(key_times)))
-    for i in range(len(key_times)):
-        micro_sec = int(key_times[i] * 1000000)
-        bit_k[i] = 0 if micro_sec % 2 == 0 else 1
-
-    if plot_bit:
-        showBitSeq(bit_k, "Keyboard Bit Sequence")
-
-    return bit_k
-
-
-def collectSystemEntropy(plot_bit=True, seconds=15):
-    sys_bits = []
-    t_end = time.time() + seconds
-    
-    while time.time() < t_end:
-        c_stats = psutil.cpu_stats()
-        n_stats = psutil.net_io_counters()
-        d_stats = psutil.disk_io_counters()
-
-        jitter = time.perf_counter_ns()
-        raw_data = f"{c_stats.ctx_switches}{c_stats.interrupts}{n_stats.bytes_recv}{d_stats.read_bytes if d_stats else 0}{jitter}"
-        hashed_val = hashlib.sha256(raw_data.encode()).digest()
+class MouseEntropyCollector(BaseCollector):
+    def collect(self, duration):
+        """Campiona la posizione del mouse per la durata richiesta."""
+        x_coo = []
+        y_coo = []
+        controller = mouse.Controller()
+        t_end = time.time() + duration
         
-        bit = hashed_val[-1] % 2
-        sys_bits.append(bit)
+        # Campionamento ad alta frequenza (~100Hz)
+        while time.time() < t_end:
+            x, y = controller.position
+            x_coo.append(x)
+            y_coo.append(y)
+            time.sleep(0.005) # Sleep breve per non saturare la CPU
+
+        if not x_coo: return np.array([])
+
+        # Estrazione bit meno significativo dalla somma coordinate
+        bit_m = np.zeros(len(x_coo))
+        for i in range(len(x_coo)):
+            val = int(x_coo[i] + y_coo[i])
+            bit_m[i] = val % 2
         
-        time.sleep(0.005)
-    
-    bit_s = np.array(sys_bits)
+        return bit_m
 
-    if plot_bit:
-        showBitSeq(bit_s, "System Bit Sequence")
+class KeyboardEntropyCollector(BaseCollector):
+    def __init__(self):
+        self._buffer = deque() # Coda thread-safe per i timestamp
+        self._listener = None
 
-    return bit_s
+    def start(self):
+        if not self._listener:
+            # Avvia il listener una volta sola in background
+            self._listener = keyboard.Listener(on_press=self._on_press)
+            self._listener.start()
+            print("[Keyboard] Listener avviato in background.")
+
+    def stop(self):
+        if self._listener:
+            self._listener.stop()
+            self._listener = None
+
+    def _on_press(self, key):
+        # Salva il timestamp in nanosecondi
+        self._buffer.append(time.perf_counter_ns())
+
+    def collect(self, duration):
+        # Svuota il buffer corrente e attendi per la durata
+        # Nota: Non fermiamo il listener! Raccogliamo solo ciò che arriva.
+        self._buffer.clear() 
+        time.sleep(duration)
+        
+        # Preleva i dati accumulati nel buffer
+        timestamps = list(self._buffer)
+        
+        if not timestamps:
+            return np.array([])
+
+        bit_k = np.zeros(len(timestamps))
+        for i, ts in enumerate(timestamps):
+            # Usa i nanosecondi per massima entropia
+            bit_k[i] = ts % 2
+            
+        return bit_k
+
+class SystemEntropyCollector(BaseCollector):
+    def collect(self, duration):
+        """Raccoglie jitter di sistema e contatori hardware."""
+        sys_bits = []
+        t_end = time.time() + duration
+        
+        while time.time() < t_end:
+            c_stats = psutil.cpu_stats()
+            n_stats = psutil.net_io_counters()
+            
+            # Jitter temporale in nanosecondi (sempre variabile)
+            jitter = time.perf_counter_ns()
+            
+            # Snapshot dello stato del sistema
+            raw_data = f"{c_stats.ctx_switches}{c_stats.interrupts}{n_stats.bytes_recv}{jitter}"
+            
+            # Hashing immediato per sbiancamento (Whitening)
+            hashed = hashlib.sha256(raw_data.encode()).digest()
+            sys_bits.append(hashed[-1] % 2)
+            
+            time.sleep(0.005) # 200Hz sampling
+        
+        return np.array(sys_bits)
