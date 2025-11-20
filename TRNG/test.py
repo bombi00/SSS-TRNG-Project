@@ -8,9 +8,6 @@ class NISTTestSuite:
 
     def run_all(self):
         formatted_results = {}
-        
-        if len(self.bits) < 1000:
-            print(f"ATTENZIONE: Sequenza molto breve ({len(self.bits)} bit). Molti test NIST verranno saltati.")
 
         try:
             results_list = run_all_battery(self.bits, SP800_22R1A_BATTERY)

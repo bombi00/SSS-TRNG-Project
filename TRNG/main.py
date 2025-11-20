@@ -1,7 +1,5 @@
-import sys
-import numpy as np
 from trng import TRNG
-from test_nist import NISTTestSuite
+from test import NISTTestSuite
 
 def run_experiment(seq_length, sources, filename):
     print(f"\n{'='*60}")
@@ -18,19 +16,17 @@ def run_experiment(seq_length, sources, filename):
     print(f"\n--- Esecuzione Test Statistici NIST ---")
     nist = NISTTestSuite(random_seq)
     results = nist.run_all()
-
-    print("\n" + "-"*45)
-    print(f"RISULTATI TEST ({filename})")
-    print("-" * 45)
-    print(f"{'TEST':<20} | {'P-VALUE':<10} | {'ESITO':<10}")
-    print("-" * 45)
+    
+    print("-" * 63)
+    print(f"|{'TEST':<40} | {'P-VALUE':<10} | {'ESITO':<6}|")
+    print("-" * 63)
     
     success_count = 0
     for name, res in results.items():
-        status = "PASS" if res['Pass'] else "FAIL !!"
+        status = "PASS" if res['Pass'] else "FAIL"
         if res['Pass']: success_count += 1
-        print(f"{name:<20} | {res['P-Value']:<10} | {status:<10}")
-    print("-" * 45)
+        print(f"|{name:<40} | {res['P-Value']:<10} | {status:<6}|")
+    print("-" * 63)
     
     if success_count == len(results):
         print(">>> TUTTI I TEST SUPERATI CON SUCCESSO <<<")
@@ -40,8 +36,8 @@ def run_experiment(seq_length, sources, filename):
 def main():
     TARGET_BITS = 10000
 
-    print("Seleziona lo scenario di test:")
-    print("1. IDLE (Solo System Noise - Nessuna interazione)")
+    print("Select the test:")
+    print("1. IDLE")
     print("2. NON-IDLE (System + Mouse + Keyboard - Richiede interazione)")
     
     choice = input("\nScelta (1/2): ").strip()

@@ -7,7 +7,6 @@ from collectors import MouseEntropyCollector, KeyboardEntropyCollector, SystemEn
 class TRNG:
     def __init__(self):
         self.pool = EntropyPool()
-        # Istanzia i collectors
         self.collectors_map = {
             'mouse': MouseEntropyCollector(),
             'keyboard': KeyboardEntropyCollector(),
@@ -16,32 +15,27 @@ class TRNG:
         self.executor = None
 
     def start_collectors(self, sources):
-        """Avvia i listener persistenti (es. tastiera) se richiesti."""
         for src in sources:
             if src in self.collectors_map:
                 self.collectors_map[src].start()
-        
-        # Inizializza il pool di thread
+
         self.executor = ThreadPoolExecutor(max_workers=len(sources))
 
     def stop_collectors(self):
-        """Ferma tutto e pulisce le risorse."""
         for collector in self.collectors_map.values():
             collector.stop()
+
         if self.executor:
             self.executor.shutdown(wait=False)
 
     def _collect_chunk_parallel(self, sources, duration):
-        """Esegue i metodi .collect() delle istanze in parallelo."""
         futures = {}
         
         for src in sources:
             if src in self.collectors_map:
                 collector = self.collectors_map[src]
-                # Sottomette il metodo collect dell'istanza al thread pool
                 futures[self.executor.submit(collector.collect, duration)] = src
 
-        # Raccoglie i risultati man mano che arrivano
         for future in as_completed(futures):
             try:
                 bits = future.result()
@@ -70,7 +64,7 @@ class TRNG:
                     continue
 
                 # 3. Estrazione (Hashing)
-                new_bits = self.pool.get_final_sequence(method='hash')
+                new_bits = self.pool.get_final_sequence()
                 final_sequence = np.concatenate((final_sequence, new_bits))
                 
                 # Reset pool e stampa
