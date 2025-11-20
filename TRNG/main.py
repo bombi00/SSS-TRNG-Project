@@ -8,7 +8,7 @@ def run_experiment(seq_length, sources, filename):
     print(f"{'='*60}")
 
     trng = TRNG()
-    random_seq = trng.generate_sequence(seq_length, sources=sources, chunk_duration=0.1)
+    random_seq = trng.generate_sequence(seq_length, sources=sources)
     
     print(f"\nGenerazione completata. Lunghezza sequenza: {len(random_seq)} bit")
     trng.save_to_file(random_seq, filename)
@@ -16,7 +16,7 @@ def run_experiment(seq_length, sources, filename):
     print(f"\n--- Esecuzione Test Statistici NIST ---")
     nist = NISTTestSuite(random_seq)
     results = nist.run_all()
-    
+
     print("-" * 63)
     print(f"|{'TEST':<40} | {'P-VALUE':<10} | {'ESITO':<6}|")
     print("-" * 63)
@@ -34,7 +34,7 @@ def run_experiment(seq_length, sources, filename):
         print(f">>> ATTENZIONE: {len(results) - success_count} TEST FALLITI <<<")
 
 def main():
-    TARGET_BITS = 10000
+    TARGET_BITS = 100000
 
     print("Select the test:")
     print("1. IDLE")

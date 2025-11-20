@@ -13,16 +13,16 @@ class NISTTestSuite:
             results_list = run_all_battery(self.bits, SP800_22R1A_BATTERY)
             
             for item in results_list:
-                if item is None:
-                    continue
+                #if item is None:
+                #    continue
                 
                 try:
                     result, elapsed_time = item
                 except TypeError:
                     continue
 
-                if result is None or not hasattr(result, 'name') or not hasattr(result, 'score'):
-                    continue
+                #if result is None or not hasattr(result, 'name') or not hasattr(result, 'score'):
+                #    continue
 
                 test_name = result.name
                 p_value = result.score
