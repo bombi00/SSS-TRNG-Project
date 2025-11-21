@@ -34,7 +34,7 @@ def run_experiment(seq_length, sources, filename):
         print(f">>> ATTENZIONE: {len(results) - success_count} TEST FALLITI <<<")
 
 def main():
-    TARGET_BITS = 100000
+    TARGET_BITS = 1000000
 
     print("Select the test:")
     print("1. IDLE")
@@ -43,6 +43,7 @@ def main():
     choice = input("\nScelta (1/2): ").strip()
 
     if choice == "1":
+        print("h")
         run_experiment(TARGET_BITS, sources=['system'], filename="trng_idle.txt")
         
     elif choice == "2":
